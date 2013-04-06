@@ -1,0 +1,4 @@
+name = "HtmlPurify"
+description = "Provides HTML and text cleanup functionality using HTML Purifier"
+version = "2.2"
+is_global = 1

@@ -1,17 +1,23 @@
 <?php
-require_once('vendor/htmlpurifier/library/HTMLPurifier.auto.php');
 /**
  * A wrapper for the HTML purifier library.  When this class gets instantiated, it determines which version of the purifier library to include based on the PHP version,
  * instantiates it (storing it in it's own property for easy re-use), and can then call it with wrapper functions that allow a list of allowable HTML tags on any individual
  * purifier call.
  *
  * @package Extensions
+ * @subpackage HtmlPurify
  * @author Peter Epp
  * @copyright Copyright (c) 2009 Peter Epp (http://teknocat.org)
  * @license GNU Lesser General Public License (http://www.gnu.org/licenses/lgpl.html)
- * @version 2.0
+ * @version 2.0 $Id: extension.php 14624 2012-04-19 18:29:35Z teknocat $
  **/
 class HtmlPurify {
+	/**
+	 * The path to HTML purifier, relative to this file
+	 *
+	 * @var string
+	 */
+	private static $_htmlpurifier_path = 'vendor/htmlpurifier-4.4.0/library/HTMLPurifier.auto.php';
 	/**
 	 * Use HTMLPurifier to purify dirty HTML.
 	 *
@@ -21,7 +27,7 @@ class HtmlPurify {
 	 * @author Peter Epp
 	 */
 	public static function purify_html($dirty_html,$filters = array()) {
-		if (H::is_installed()) {
+		if (self::is_installed()) {
 			if (!isset($filters['allowed'])) {
 				$filters['allowed'] = "p[class|style],
 								strong,
@@ -50,6 +56,10 @@ class HtmlPurify {
 				$filters['css_allowed'] = array();
 			}
 			$purifier_config = HTMLPurifier_Config::createDefault();
+			if (!Crumbs::ensure_directory(SITE_ROOT.'/var/cache/html-purifier-serializer')) {
+				Console::log("HTML Purifier cache directory (/var/cache/html-purifier-serializer) does not exist or is not writable. Performance will be reduced.");
+			}
+			$purifier_config->set('Cache.SerializerPath', SITE_ROOT.'/var/cache/html-purifier-serializer');
 			$purifier_config->set('Core.Encoding', 'UTF-8');
 			$allowed = preg_replace("/(\t|\r|\n|\s)/","",$filters["allowed"]);
 			$purifier_config->set('HTML.Allowed',$allowed);
@@ -80,8 +90,12 @@ class HtmlPurify {
 	 * @author Peter Epp
 	 */
 	public static function purify_text($dirty_text) {
-		if (H::is_installed()) {
+		if (self::is_installed()) {
 			$purifier_config = HTMLPurifier_Config::createDefault();
+			if (!Crumbs::ensure_directory(SITE_ROOT.'/var/cache/html-purifier-serializer')) {
+				Console::log("HTML Purifier cache directory (/var/cache/html-purifier-serializer) does not exist or is not writable. Performance will be reduced.");
+			}
+			$purifier_config->set('Cache.SerializerPath', SITE_ROOT.'/var/cache/html-purifier-serializer');
 			$purifier_config->set('Core.Encoding', 'UTF-8');
 			$purifier_config->set('HTML.Allowed',"");
 			$purifier = new HTMLPurifier($purifier_config);
@@ -100,6 +114,7 @@ class HtmlPurify {
 	 * @author Peter Epp
 	 */
 	public static function is_installed() {
+		require_once(self::$_htmlpurifier_path);
 		return (class_exists('HTMLPurifier'));
 	}
 	/**
@@ -113,10 +128,10 @@ class HtmlPurify {
 		if (is_array($data) && !empty($data)) {
 			foreach ($data as $key => $value) {
 				if (is_array($value)) {
-					$data[$key] = H::purify_array_text($value);
+					$data[$key] = self::purify_array_text($value);
 				}
 				else {
-					$data[$key] = H::purify_text($value);
+					$data[$key] = self::purify_text($value);
 				}
 			}
 		}
@@ -126,7 +141,7 @@ class HtmlPurify {
 	 * Purify an entire array of HTML data recursively. All elements of the array will have any HTML purified.
 	 *
 	 * @param string $data 
-	 * @param array $filters Same as for H::purify_html(). Exclude to use default.
+	 * @param array $filters Same as for self::purify_html(). Exclude to use default.
 	 * @return void
 	 * @author Peter Epp
 	 */
@@ -134,10 +149,10 @@ class HtmlPurify {
 		if (is_array($data) && !empty($data)) {
 			foreach ($data as $key => $value) {
 				if (is_array($value)) {
-					$data[$key] = H::purify_array_html($value,$filters);
+					$data[$key] = self::purify_array_html($value,$filters);
 				}
 				else {
-					$data[$key] = H::purify_html($value,$filters);
+					$data[$key] = self::purify_html($value,$filters);
 				}
 			}
 		}
@@ -152,4 +167,3 @@ class HtmlPurify {
  */
 class H extends HtmlPurify {
 }
-?>
